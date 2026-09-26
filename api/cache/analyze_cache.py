@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 
+from redis import Redis as SyncRedis
 from redis.asyncio import Redis
 
 from api.schemas import AnalyzeRequest, AnalyzeResponse
@@ -54,5 +55,30 @@ async def write_analyze_cache(
     payload = response.model_copy(update={"cached": False})
     try:
         await client.set(cache_key, payload.model_dump_json(), ex=ttl_seconds)
+    except Exception:
+        return
+
+
+def read_analyze_cache_sync(client: SyncRedis, cache_key: str) -> AnalyzeResponse | None:
+    try:
+        raw = client.get(cache_key)
+    except Exception:
+        return None
+    if raw is None:
+        return None
+    response = AnalyzeResponse.model_validate_json(raw)
+    response.cached = True
+    return response
+
+
+def write_analyze_cache_sync(
+    client: SyncRedis,
+    cache_key: str,
+    response: AnalyzeResponse,
+    ttl_seconds: int,
+) -> None:
+    payload = response.model_copy(update={"cached": False})
+    try:
+        client.set(cache_key, payload.model_dump_json(), ex=ttl_seconds)
     except Exception:
         return

@@ -31,6 +31,7 @@ def create_celery_app() -> Celery:
         task_acks_late=True,
         worker_prefetch_multiplier=1,
         result_expires=86_400,
+        imports=("api.workers.tasks",),
     )
     return application
 
