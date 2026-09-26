@@ -48,6 +48,7 @@ postprocessing:
 
 metrics:
   high_precision_target: 0.8
+  span_match_f1_threshold: 0.5
 
 mlflow:
   tracking_uri: file:./mlruns
