@@ -1,33 +1,15 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
 
-import { getAccessToken, logout } from "@/lib/api";
+import { logout } from "@/lib/api";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    if (getAccessToken() === null) {
-      router.replace("/login");
-      return;
-    }
-    setReady(true);
-  }, [router]);
 
   function onLogout() {
     logout();
     router.replace("/login");
-  }
-
-  if (!ready) {
-    return (
-      <main className="flex min-h-screen items-center justify-center px-6">
-        <p className="text-sm text-zinc-500">Loading...</p>
-      </main>
-    );
   }
 
   return (
