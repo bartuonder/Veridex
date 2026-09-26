@@ -4,15 +4,15 @@ import uuid
 from datetime import datetime, timezone
 
 from api.clause_catalog import ClauseCategory, select_categories
-from api.schemas import AnalyzeRequest, AnalyzeResponse, ClauseFinding, RiskLevel, RiskSummary
-from api.services.chunking import DocumentChunk, locate_chunk_index, split_document
+from api.schemas import AnalyzeRequest, AnalyzeResponse, ClauseFinding
+from api.services.chunking import locate_chunk_index, split_document
+from api.services.risk import summarize_risk
 from api.settings import Settings
 
 MOCK_MODEL_SOURCE = "mock-analyzer-no-model-loaded"
 MOCK_CONFIDENCE = 0.5
 SENTENCE_TERMINATORS = ".;\n"
 MAX_CLAUSE_CHARACTERS = 600
-RISK_LEVEL_SEVERITY_ORDER = (RiskLevel.CRITICAL, RiskLevel.HIGH, RiskLevel.MEDIUM, RiskLevel.LOW)
 
 
 class MockClauseAnalyzer:
@@ -93,17 +93,3 @@ def expand_to_sentence(document_text: str, position: int) -> tuple[int, int]:
     return start, end
 
 
-def summarize_risk(findings: list[ClauseFinding]) -> RiskSummary:
-    counts = {level: 0 for level in RiskLevel}
-    for finding in findings:
-        counts[finding.risk_level] += 1
-    highest_risk_level = next(
-        (level for level in RISK_LEVEL_SEVERITY_ORDER if counts[level] > 0), None
-    )
-    return RiskSummary(
-        critical=counts[RiskLevel.CRITICAL],
-        high=counts[RiskLevel.HIGH],
-        medium=counts[RiskLevel.MEDIUM],
-        low=counts[RiskLevel.LOW],
-        highest_risk_level=highest_risk_level,
-    )

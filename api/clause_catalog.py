@@ -112,13 +112,34 @@ CLAUSE_CATALOG: tuple[ClauseCategory, ...] = (
     ),
 )
 
+def normalize_category_name(name: str) -> str:
+    collapsed = "".join(character.lower() if character.isalnum() else "_" for character in name)
+    return "_".join(part for part in collapsed.split("_") if part)
+
+
 CATALOG_BY_NAME: dict[str, ClauseCategory] = {entry.name: entry for entry in CLAUSE_CATALOG}
+CATALOG_BY_NORMALIZED_NAME: dict[str, ClauseCategory] = {
+    normalize_category_name(entry.name): entry for entry in CLAUSE_CATALOG
+}
+
+
+def resolve_category(name: str) -> ClauseCategory | None:
+    if name in CATALOG_BY_NAME:
+        return CATALOG_BY_NAME[name]
+    return CATALOG_BY_NORMALIZED_NAME.get(normalize_category_name(name))
 
 
 def select_categories(requested_names: list[str] | None) -> tuple[ClauseCategory, ...]:
     if not requested_names:
         return CLAUSE_CATALOG
-    unknown = [name for name in requested_names if name not in CATALOG_BY_NAME]
+    resolved: list[ClauseCategory] = []
+    unknown: list[str] = []
+    for name in requested_names:
+        category = resolve_category(name)
+        if category is None:
+            unknown.append(name)
+            continue
+        resolved.append(category)
     if unknown:
         raise KeyError(f"Unknown clause categories: {unknown}")
-    return tuple(CATALOG_BY_NAME[name] for name in requested_names)
+    return tuple(resolved)

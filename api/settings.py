@@ -2,20 +2,35 @@ from __future__ import annotations
 
 import os
 from functools import lru_cache
+from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 ENVIRONMENT_PREFIX = "VERIDEX_"
 
 
 class Settings(BaseModel):
+    model_config = ConfigDict(frozen=True, protected_namespaces=())
+
     app_name: str = "Veridex Clause Analysis API"
-    app_version: str = "0.1.0"
+    app_version: str = "0.2.0"
     max_document_characters: int = Field(default=500_000, gt=0)
     chunk_characters: int = Field(default=4_000, gt=0)
     chunk_overlap_characters: int = Field(default=400, ge=0)
+
+    model_source: Literal["registry", "local", "mock"] = "registry"
     registered_model_name: str = "Veridex-QA"
     model_alias: str = "staging"
+    local_model_path: str = "outputs/veridex-qa/best-model"
+    mlflow_tracking_uri: str = "sqlite:///mlflow.db"
+
+    max_seq_length: int = Field(default=384, gt=0)
+    doc_stride: int = Field(default=128, ge=0)
+    max_answer_length: int = Field(default=256, gt=0)
+    n_best_size: int = Field(default=20, gt=0)
+    null_score_diff_threshold: float = -5.0
+    inference_batch_size: int = Field(default=16, gt=0)
+    inference_device: Literal["auto", "cuda", "cpu"] = "auto"
 
     @classmethod
     def from_environment(cls) -> "Settings":

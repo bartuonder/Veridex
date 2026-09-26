@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class RiskLevel(str, Enum):
@@ -75,12 +75,17 @@ class AnalyzeResponse(BaseModel):
 
 
 class HealthResponse(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+
     status: Literal["ok"]
     app_name: str
     app_version: str
     model_status: ModelStatus
+    model_source: str
     registered_model_name: str
     model_alias: str
+    null_score_diff_threshold: float
+    model_load_error: str | None = None
     uptime_seconds: float = Field(ge=0.0)
 
 

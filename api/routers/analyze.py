@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from api.clause_catalog import CLAUSE_CATALOG
 from api.schemas import AnalyzeRequest, AnalyzeResponse, ErrorResponse
-from api.services.mock_analyzer import MockClauseAnalyzer
+from api.services.analyzer_provider import get_analyzer_state
 from api.settings import Settings, get_settings
 
 router = APIRouter(tags=["analysis"])
@@ -40,6 +40,6 @@ def analyze_contract(
         )
 
     try:
-        return MockClauseAnalyzer(settings).analyze(request)
+        return get_analyzer_state(settings).analyzer.analyze(request)
     except KeyError as error:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
