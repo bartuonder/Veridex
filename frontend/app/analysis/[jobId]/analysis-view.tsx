@@ -39,7 +39,37 @@ export function AnalysisView({ jobId }: { jobId: string }) {
         </p>
       ) : null}
       {job?.status === "completed" ? (
-        <p className="mt-6 text-sm text-zinc-600">Analysis complete.</p>
+        <section className="mt-8 space-y-4">
+          <p className="text-xs text-zinc-500">cached: {job.cached || job.result?.cached ? "true" : "false"}</p>
+          {job.result === null || job.result.findings.length === 0 ? (
+            <p className="text-sm text-zinc-600">No clauses found.</p>
+          ) : (
+            <ul className="space-y-3">
+              {job.result.findings.map((finding, index) => (
+                <li
+                  key={`${finding.category}-${finding.character_start}-${finding.character_end}-${index}`}
+                  className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h2 className="text-base font-semibold text-zinc-900">{finding.category}</h2>
+                    <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                      {finding.risk_level}
+                    </span>
+                  </div>
+                  {finding.clause_text ? (
+                    <p className="mt-3 text-sm leading-6 text-zinc-700">{finding.clause_text}</p>
+                  ) : null}
+                  <p className="mt-3 text-xs text-zinc-500">
+                    Confidence {(finding.confidence * 100).toFixed(1)}%
+                    {finding.character_end > finding.character_start
+                      ? ` · chars ${finding.character_start}–${finding.character_end}`
+                      : ""}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       ) : null}
       {job === null && error === null ? (
         <p className="mt-6 text-sm text-zinc-600">Analiz ediliyor...</p>
