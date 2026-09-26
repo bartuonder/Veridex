@@ -273,3 +273,18 @@ export type ApiKeyListItem = {
 export async function listApiKeys(): Promise<ApiKeyListItem[]> {
   return apiFetch<ApiKeyListItem[]>("/auth/api-keys", { auth: true });
 }
+
+export type CreatedApiKey = {
+  id: string;
+  name: string;
+  key: string;
+  created_at: string;
+};
+
+export async function createApiKey(name: string): Promise<CreatedApiKey> {
+  return apiFetch<CreatedApiKey>("/auth/api-keys", {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify({ name }),
+  });
+}
