@@ -1,5 +1,3 @@
-const HISTORY_KEY = "veridex_analysis_jobs";
-
 export type StoredAnalysisJob = {
   job_id: string;
   document_name: string;
@@ -11,6 +9,10 @@ function browserStorage(): Storage | null {
     return null;
   }
   return window.localStorage;
+}
+
+function historyKey(userId: string): string {
+  return `veridex_analysis_jobs:${userId}`;
 }
 
 function isStoredAnalysisJob(value: unknown): value is StoredAnalysisJob {
@@ -26,8 +28,11 @@ function isStoredAnalysisJob(value: unknown): value is StoredAnalysisJob {
   );
 }
 
-export function loadAnalysisJobs(): StoredAnalysisJob[] {
-  const raw = browserStorage()?.getItem(HISTORY_KEY);
+export function loadAnalysisJobs(userId: string): StoredAnalysisJob[] {
+  if (userId.length === 0) {
+    return [];
+  }
+  const raw = browserStorage()?.getItem(historyKey(userId));
   if (raw === null || raw === undefined) {
     return [];
   }
@@ -42,8 +47,11 @@ export function loadAnalysisJobs(): StoredAnalysisJob[] {
   }
 }
 
-export function addAnalysisJob(job: StoredAnalysisJob): StoredAnalysisJob[] {
-  const next = [job, ...loadAnalysisJobs().filter((item) => item.job_id !== job.job_id)];
-  browserStorage()?.setItem(HISTORY_KEY, JSON.stringify(next));
+export function addAnalysisJob(userId: string, job: StoredAnalysisJob): StoredAnalysisJob[] {
+  if (userId.length === 0) {
+    return [];
+  }
+  const next = [job, ...loadAnalysisJobs(userId).filter((item) => item.job_id !== job.job_id)];
+  browserStorage()?.setItem(historyKey(userId), JSON.stringify(next));
   return next;
 }
