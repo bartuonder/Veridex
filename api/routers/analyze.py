@@ -7,7 +7,7 @@ from redis.asyncio import Redis
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from api.auth.deps import get_current_user
+from api.auth.deps import get_request_user
 from api.cache.analyze_cache import build_analyze_cache_key, read_analyze_cache
 from api.cache.client import get_redis
 from api.clause_catalog import CLAUSE_CATALOG, select_categories
@@ -56,7 +56,7 @@ async def analyze_contract(
     settings: Settings = Depends(get_settings),
     redis: Redis = Depends(get_redis),
     session: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_request_user),
 ) -> AnalyzeJobAccepted:
     if len(request.document_text) > settings.max_document_characters:
         raise HTTPException(
@@ -112,7 +112,7 @@ async def analyze_contract(
 def read_analyze_job(
     job_id: str,
     session: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_request_user),
 ) -> AnalyzeJobStatus:
     analysis = session.scalar(select(AnalysisResult).where(AnalysisResult.job_id == job_id))
     if analysis is None:
