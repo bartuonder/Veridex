@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from api.routers import analyze, health
+from api.routers import analyze, auth, health
 from api.services.analyzer_provider import initialise_analyzer
 from api.settings import get_settings
 
@@ -24,6 +24,7 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     app.include_router(health.router)
+    app.include_router(auth.router)
     app.include_router(analyze.router)
     return app
 

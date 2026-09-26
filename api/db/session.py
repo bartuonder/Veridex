@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Iterator
 from functools import lru_cache
 
 from sqlalchemy import Engine, create_engine
@@ -51,3 +52,15 @@ def get_session_factory() -> sessionmaker[Session]:
 @lru_cache(maxsize=1)
 def get_async_session_factory() -> async_sessionmaker[AsyncSession]:
     return async_sessionmaker(bind=get_async_engine(), autoflush=False, expire_on_commit=False)
+
+
+def get_db() -> Iterator[Session]:
+    session = get_session_factory()()
+    try:
+        yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
