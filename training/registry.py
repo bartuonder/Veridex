@@ -158,3 +158,53 @@ def _alias_metric(client: MlflowClient, registered_name: str, alias: str) -> flo
 
 def load_registered_model(registered_name: str, alias: str):
     return mlflow.pyfunc.load_model(f"models:/{registered_name}@{alias}")
+
+
+def main() -> None:
+    import argparse
+    import json
+
+    from training.config import load_config, resolve_path
+    from training.tracking import configure_mlflow
+
+    parser = argparse.ArgumentParser(
+        description="Register an existing Veridex checkpoint in the MLflow Model Registry"
+    )
+    parser.add_argument("--config", default=None)
+    parser.add_argument("--model-path", default=None)
+    parser.add_argument("--metrics-file", default=None)
+    parser.add_argument("--run-name", default=None)
+    arguments = parser.parse_args()
+
+    config = load_config(arguments.config)
+    configure_mlflow(config["mlflow"])
+
+    model_directory = resolve_path(
+        arguments.model_path or Path(config["training"]["output_dir"]) / "best-model"
+    )
+    metrics_path = (
+        Path(arguments.metrics_file)
+        if arguments.metrics_file
+        else model_directory / "validation_metrics.json"
+    )
+    metrics: dict[str, float] = {}
+    if metrics_path.exists():
+        with open(metrics_path, "r", encoding="utf-8") as handle:
+            metrics = json.load(handle)
+
+    with mlflow.start_run(run_name=arguments.run_name or f"register-{model_directory.name}"):
+        mlflow.log_param("registered_from", str(model_directory))
+        mlflow.log_metrics({key: value for key, value in metrics.items() if isinstance(value, (int, float))})
+        version = register_best_model(model_directory, metrics, config["mlflow"])
+
+    if version is None:
+        print("Existing staging model has a higher eval_f1, alias left unchanged")
+    else:
+        print(
+            f"Registered {config['mlflow']['registered_model_name']} version {version} "
+            f"with alias {config['mlflow']['staging_alias']}"
+        )
+
+
+if __name__ == "__main__":
+    main()
