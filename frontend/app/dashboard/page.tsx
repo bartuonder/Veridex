@@ -13,7 +13,6 @@ export default function DashboardPage() {
   const [documentName, setDocumentName] = useState("pasted-contract.txt");
   const [documentText, setDocumentText] = useState("");
   const [error, setError] = useState("");
-  const [jobId, setJobId] = useState("");
   const [pending, setPending] = useState(false);
   const [jobs, setJobs] = useState<StoredAnalysisJob[]>([]);
 
@@ -26,11 +25,9 @@ export default function DashboardPage() {
       return;
     }
     setError("");
-    setJobId("");
     setPending(true);
     try {
       const accepted = await submitAnalyze(documentName.trim(), documentText);
-      setJobId(accepted.job_id);
       setJobs(
         addAnalysisJob({
           job_id: accepted.job_id,
@@ -38,6 +35,7 @@ export default function DashboardPage() {
           created_at: new Date().toISOString(),
         }),
       );
+      router.push(`/analysis/${accepted.job_id}`);
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 401) {
         logout();
@@ -45,7 +43,6 @@ export default function DashboardPage() {
         return;
       }
       setError(caught instanceof ApiError ? caught.detail : "Analyze request failed");
-    } finally {
       setPending(false);
     }
   }
@@ -94,18 +91,13 @@ export default function DashboardPage() {
         {error ? (
           <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
         ) : null}
-        {jobId ? (
-          <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-            Job queued: {jobId}
-          </p>
-        ) : null}
         <button
           className="rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-60"
           type="button"
           disabled={pending}
           onClick={() => void onSubmit()}
         >
-          {pending ? "Sending..." : "Analyze contract"}
+          {pending ? "Analyzing..." : "Analyze contract"}
         </button>
       </div>
       <section className="mt-10">
