@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
+import { addAnalysisJob, loadAnalysisJobs, StoredAnalysisJob } from "@/lib/analysis-history";
 import { ApiError, logout, submitAnalyze } from "@/lib/api";
 
 export default function DashboardPage() {
@@ -12,6 +14,11 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
   const [jobId, setJobId] = useState("");
   const [pending, setPending] = useState(false);
+  const [jobs, setJobs] = useState<StoredAnalysisJob[]>([]);
+
+  useEffect(() => {
+    setJobs(loadAnalysisJobs());
+  }, []);
 
   function onLogout() {
     logout();
@@ -26,6 +33,13 @@ export default function DashboardPage() {
     try {
       const accepted = await submitAnalyze(documentName.trim(), documentText);
       setJobId(accepted.job_id);
+      setJobs(
+        addAnalysisJob({
+          job_id: accepted.job_id,
+          document_name: documentName.trim(),
+          created_at: new Date().toISOString(),
+        }),
+      );
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 401) {
         logout();
@@ -94,6 +108,26 @@ export default function DashboardPage() {
           {pending ? "Sending..." : "Analyze contract"}
         </button>
       </form>
+      <section className="mt-10">
+        <h2 className="text-lg font-semibold tracking-tight text-zinc-900">Geçmiş Analizler</h2>
+        {jobs.length === 0 ? (
+          <p className="mt-3 text-sm text-zinc-500">No analyses yet.</p>
+        ) : (
+          <ul className="mt-4 divide-y divide-zinc-200 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
+            {jobs.map((job) => (
+              <li key={job.job_id}>
+                <Link
+                  className="block px-5 py-4 transition-colors hover:bg-zinc-50"
+                  href={`/analysis/${job.job_id}`}
+                >
+                  <p className="font-medium text-zinc-900">{job.document_name}</p>
+                  <p className="mt-1 break-all font-mono text-xs text-zinc-500">{job.job_id}</p>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </main>
   );
 }
