@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
+from api.auth.deps import get_current_user
 from api.clause_catalog import CLAUSE_CATALOG
+from api.db.models import User
 from api.schemas import AnalyzeRequest, AnalyzeResponse, ErrorResponse
 from api.services.analyzer_provider import get_analyzer_state
 from api.settings import Settings, get_settings
@@ -23,12 +25,14 @@ def list_clause_categories() -> list[dict]:
     response_model=AnalyzeResponse,
     responses={
         status.HTTP_400_BAD_REQUEST: {"model": ErrorResponse},
+        status.HTTP_401_UNAUTHORIZED: {"model": ErrorResponse},
         status.HTTP_413_REQUEST_ENTITY_TOO_LARGE: {"model": ErrorResponse},
     },
 )
 def analyze_contract(
     request: AnalyzeRequest,
     settings: Settings = Depends(get_settings),
+    _: User = Depends(get_current_user),
 ) -> AnalyzeResponse:
     if len(request.document_text) > settings.max_document_characters:
         raise HTTPException(
