@@ -1,3 +1,7 @@
+import { cookies } from "next/headers";
+
+import { ACCESS_COOKIE } from "@/lib/auth-cookies";
+
 const BACKEND = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 async function proxy(request: Request, path: string[]): Promise<Response> {
@@ -6,6 +10,12 @@ async function proxy(request: Request, path: string[]): Promise<Response> {
   const authorization = request.headers.get("authorization");
   if (authorization !== null) {
     headers.set("authorization", authorization);
+  } else {
+    const jar = await cookies();
+    const cookieToken = jar.get(ACCESS_COOKIE)?.value;
+    if (cookieToken) {
+      headers.set("authorization", `Bearer ${cookieToken}`);
+    }
   }
   const apiKey = request.headers.get("x-api-key");
   if (apiKey !== null) {

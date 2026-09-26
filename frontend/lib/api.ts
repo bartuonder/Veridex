@@ -157,6 +157,7 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   const send = (token: string | null) =>
     fetch(url, {
       ...rest,
+      credentials: "include",
       headers: buildHeaders(headers, rest.body, token),
     });
 
@@ -223,6 +224,11 @@ export async function registerAndLogin(email: string, password: string): Promise
 
 export async function logout(): Promise<void> {
   clearTokens();
+  await fetch("/api/auth/logout", {
+    method: "POST",
+    credentials: "include",
+    headers: { Accept: "application/json" },
+  });
 }
 
 export type AnalyzeJobAccepted = {

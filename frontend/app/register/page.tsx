@@ -1,40 +1,13 @@
-"use client";
-
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { KeyboardEvent, useState } from "react";
 
-import { ApiError, registerAndLogin } from "@/lib/api";
+import { registerAction } from "./actions";
 
-export default function RegisterPage() {
-  const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [pending, setPending] = useState(false);
-
-  async function submit() {
-    if (pending) {
-      return;
-    }
-    setError("");
-    setPending(true);
-    try {
-      await registerAndLogin(email, password);
-      router.push("/dashboard");
-    } catch (caught) {
-      setError(caught instanceof ApiError ? caught.detail : "Registration failed");
-    } finally {
-      setPending(false);
-    }
-  }
-
-  function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      void submit();
-    }
-  }
+export default async function RegisterPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
 
   return (
     <main className="flex min-h-screen items-center justify-center px-6 py-16">
@@ -42,7 +15,7 @@ export default function RegisterPage() {
         <p className="text-sm font-medium uppercase tracking-[0.2em] text-zinc-500">Veridex</p>
         <h1 className="mt-3 text-2xl font-semibold tracking-tight text-zinc-900">Create account</h1>
         <p className="mt-2 text-sm text-zinc-600">Password must be at least 8 characters.</p>
-        <div className="mt-8 space-y-4">
+        <form className="mt-8 space-y-4" action={registerAction}>
           <label className="block">
             <span className="text-sm font-medium text-zinc-700">Email</span>
             <input
@@ -50,9 +23,7 @@ export default function RegisterPage() {
               type="email"
               name="email"
               autoComplete="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              onKeyDown={onKeyDown}
+              required
             />
           </label>
           <label className="block">
@@ -62,23 +33,22 @@ export default function RegisterPage() {
               type="password"
               name="password"
               autoComplete="new-password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              onKeyDown={onKeyDown}
+              minLength={8}
+              required
             />
           </label>
           {error ? (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+              Could not create the account. Try another email or sign in.
+            </p>
           ) : null}
           <button
-            className="w-full rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-60"
-            type="button"
-            disabled={pending}
-            onClick={() => void submit()}
+            className="w-full rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white"
+            type="submit"
           >
-            {pending ? "Creating account..." : "Create account"}
+            Create account
           </button>
-        </div>
+        </form>
         <p className="mt-6 text-center text-sm text-zinc-600">
           Already have an account?{" "}
           <Link className="font-medium text-zinc-900 underline" href="/login">

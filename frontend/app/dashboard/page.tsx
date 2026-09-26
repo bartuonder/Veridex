@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { logoutAction } from "@/app/logout/actions";
 import { addAnalysisJob, loadAnalysisJobs, StoredAnalysisJob } from "@/lib/analysis-history";
 import { ApiError, logout, submitAnalyze } from "@/lib/api";
 
@@ -19,11 +20,6 @@ export default function DashboardPage() {
   useEffect(() => {
     setJobs(loadAnalysisJobs());
   }, []);
-
-  function onLogout() {
-    logout();
-    router.replace("/login");
-  }
 
   async function onSubmit() {
     if (pending) {
@@ -62,13 +58,14 @@ export default function DashboardPage() {
           <Link className="text-sm font-medium text-zinc-900 underline" href="/settings/api-keys">
             API keys
           </Link>
-          <button
-            className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm text-zinc-700"
-            type="button"
-            onClick={onLogout}
-          >
-            Sign out
-          </button>
+          <form action={logoutAction}>
+            <button
+              className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm text-zinc-700"
+              type="submit"
+            >
+              Sign out
+            </button>
+          </form>
         </div>
       </div>
       <h1 className="mt-8 text-3xl font-semibold tracking-tight text-zinc-900">Dashboard</h1>

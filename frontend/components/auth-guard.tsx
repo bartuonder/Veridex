@@ -3,18 +3,32 @@
 import { useRouter } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
 
-import { getAccessToken } from "@/lib/api";
-
 export function AuthGuard({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [allowed, setAllowed] = useState(false);
 
   useEffect(() => {
-    if (getAccessToken() === null) {
-      router.replace("/login");
-      return;
-    }
-    setAllowed(true);
+    let cancelled = false;
+    fetch("/api/auth/session")
+      .then((response) => response.json())
+      .then((data: { ok?: boolean }) => {
+        if (cancelled) {
+          return;
+        }
+        if (!data.ok) {
+          router.replace("/login");
+          return;
+        }
+        setAllowed(true);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          router.replace("/login");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   if (!allowed) {
