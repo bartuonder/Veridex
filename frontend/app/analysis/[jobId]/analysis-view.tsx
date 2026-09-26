@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
+import { RiskBadge, riskCardClass } from "@/components/risk-badge";
 import { ApiError, logout } from "@/lib/api";
 import { useAnalyzeJob } from "@/lib/use-analyze-job";
 
@@ -48,13 +49,11 @@ export function AnalysisView({ jobId }: { jobId: string }) {
               {job.result.findings.map((finding, index) => (
                 <li
                   key={`${finding.category}-${finding.character_start}-${finding.character_end}-${index}`}
-                  className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm"
+                  className={`rounded-2xl border bg-white p-5 shadow-sm ${riskCardClass(finding.risk_level)}`}
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <h2 className="text-base font-semibold text-zinc-900">{finding.category}</h2>
-                    <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-                      {finding.risk_level}
-                    </span>
+                    <RiskBadge level={finding.risk_level} />
                   </div>
                   {finding.clause_text ? (
                     <p className="mt-3 text-sm leading-6 text-zinc-700">{finding.clause_text}</p>
