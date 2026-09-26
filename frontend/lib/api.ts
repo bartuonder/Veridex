@@ -216,3 +216,48 @@ export async function submitAnalyze(
     }),
   });
 }
+
+export type JobStatus = "pending" | "processing" | "completed" | "failed";
+
+export type ClauseFinding = {
+  category: string;
+  risk_level: "low" | "medium" | "high" | "critical";
+  clause_text: string;
+  character_start: number;
+  character_end: number;
+  chunk_index: number;
+  confidence: number;
+};
+
+export type AnalyzeResponse = {
+  analysis_id: string;
+  document_name: string;
+  contract_type: string;
+  analyzed_at: string;
+  document_characters: number;
+  chunk_count: number;
+  model_source: string;
+  is_mock_response: boolean;
+  cached: boolean;
+  findings: ClauseFinding[];
+  risk_summary: {
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+    highest_risk_level: ClauseFinding["risk_level"] | null;
+  };
+  categories_without_findings: string[];
+};
+
+export type AnalyzeJobStatus = {
+  job_id: string;
+  status: JobStatus;
+  cached: boolean;
+  result: AnalyzeResponse | null;
+  error: string | null;
+};
+
+export async function fetchAnalyzeJob(jobId: string): Promise<AnalyzeJobStatus> {
+  return apiFetch<AnalyzeJobStatus>(`/analyze/${encodeURIComponent(jobId)}`, { auth: true });
+}
