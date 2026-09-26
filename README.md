@@ -13,7 +13,8 @@ Fine-tuned **DeBERTa-v3-base** on [CUAD](https://www.atticusprojectai.org/cuad) 
 | Split | F1 | Exact match | Notes |
 | --- | --- | --- | --- |
 | Validation | 68.30 | 59.00 | Best checkpoint by `eval_f1` |
-| Test (`null_score_diff_threshold=-5.0`) | 89.03 | 86.49 | Default used by the API |
+| Test (`null_score_diff_threshold=-2.0`) | 87.96 | 84.91 | Default used by the API |
+| Test (`null_score_diff_threshold=-5.0`) | 89.03 | 86.49 | Previous operating point |
 
 Training is full fine-tuning (no LoRA). Runs are tracked in MLflow and the best checkpoint is registered as `Veridex-QA` with the `staging` alias.
 
@@ -23,7 +24,7 @@ Training is full fine-tuning (no LoRA). Runs are tracked in MLflow and the best 
 Contract text
     -> FastAPI POST /analyze
     -> sliding-window DeBERTa QA (max_seq_length=384, stride=128)
-    -> null-score gate (threshold -5.0)
+    -> null-score gate (threshold -2.0)
     -> clause spans + risk summary
 ```
 
@@ -65,7 +66,7 @@ VERIDEX_REGISTERED_MODEL_NAME=Veridex-QA
 VERIDEX_MODEL_ALIAS=staging
 VERIDEX_LOCAL_MODEL_PATH=outputs/veridex-qa/best-model
 VERIDEX_MLFLOW_TRACKING_URI=sqlite:///mlflow.db
-VERIDEX_NULL_SCORE_DIFF_THRESHOLD=-5.0
+VERIDEX_NULL_SCORE_DIFF_THRESHOLD=-2.0
 VERIDEX_INFERENCE_DEVICE=auto
 VERIDEX_INFERENCE_BATCH_SIZE=16
 VERIDEX_MAX_DOCUMENT_CHARACTERS=500000

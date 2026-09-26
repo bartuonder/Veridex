@@ -28,7 +28,7 @@ class Settings(BaseModel):
     doc_stride: int = Field(default=128, ge=0)
     max_answer_length: int = Field(default=256, gt=0)
     n_best_size: int = Field(default=20, gt=0)
-    null_score_diff_threshold: float = -5.0
+    null_score_diff_threshold: float = -2.0
     inference_batch_size: int = Field(default=16, gt=0)
     inference_device: Literal["auto", "cuda", "cpu"] = "auto"
     database_url: str = "postgresql+psycopg://veridex:veridex@localhost:5432/veridex"
