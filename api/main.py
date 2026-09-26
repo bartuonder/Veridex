@@ -4,15 +4,22 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from api.cache.client import close_redis_client, create_redis_client
 from api.routers import analyze, auth, health
 from api.services.analyzer_provider import initialise_analyzer
 from api.settings import get_settings
 
 
 @asynccontextmanager
-async def lifespan(_: FastAPI):
-    initialise_analyzer(get_settings())
-    yield
+async def lifespan(app: FastAPI):
+    settings = get_settings()
+    initialise_analyzer(settings)
+    redis = create_redis_client()
+    app.state.redis = redis
+    try:
+        yield
+    finally:
+        await close_redis_client(redis)
 
 
 def create_app() -> FastAPI:

@@ -36,6 +36,8 @@ class Settings(BaseModel):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = Field(default=30, gt=0)
     refresh_token_expire_days: int = Field(default=7, gt=0)
+    redis_url: str = "redis://localhost:6379/0"
+    analyze_cache_ttl_seconds: int = Field(default=86_400, gt=0)
 
     @classmethod
     def from_environment(cls) -> "Settings":
@@ -48,6 +50,8 @@ class Settings(BaseModel):
             overrides["database_url"] = os.environ["DATABASE_URL"]
         if "SECRET_KEY" in os.environ:
             overrides["secret_key"] = os.environ["SECRET_KEY"]
+        if "REDIS_URL" in os.environ:
+            overrides["redis_url"] = os.environ["REDIS_URL"]
         return cls(**overrides)
 
 
