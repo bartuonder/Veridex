@@ -1,0 +1,107 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: veridex
+      POSTGRES_PASSWORD: veridex
+      POSTGRES_DB: veridex
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U veridex -d veridex"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    ports:
+      - "5672:5672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  api:
+    build: .
+    image: veridex-app
+    command: ["python", "-m", "api.container_api"]
+    environment: &app_environment
+      DATABASE_URL: postgresql+psycopg://veridex:veridex@postgres:5432/veridex
+      REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672//
+      SECRET_KEY: ${SECRET_KEY:-dev-only-change-this-secret-key-32}
+      VERIDEX_MODEL_SOURCE: local
+      VERIDEX_LOCAL_MODEL_PATH: /models/best-model
+      VERIDEX_INFERENCE_DEVICE: cpu
+      VERIDEX_INFERENCE_BATCH_SIZE: "8"
+      VERIDEX_NULL_SCORE_DIFF_THRESHOLD: "-5.0"
+      VERIDEX_ANALYZE_CACHE_TTL_SECONDS: "86400"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./outputs/veridex-qa/best-model:/models/best-model:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  worker:
+    image: veridex-app
+    build: .
+    command:
+      [
+        "python",
+        "-m",
+        "celery",
+        "-A",
+        "api.workers.celery_app",
+        "worker",
+        "--loglevel=info",
+        "--concurrency=1",
+      ]
+    environment:
+      <<: *app_environment
+    volumes:
+      - ./outputs/veridex-qa/best-model:/models/best-model:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
