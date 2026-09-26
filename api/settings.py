@@ -38,6 +38,7 @@ class Settings(BaseModel):
     refresh_token_expire_days: int = Field(default=7, gt=0)
     redis_url: str = "redis://localhost:6379/0"
     analyze_cache_ttl_seconds: int = Field(default=86_400, gt=0)
+    rabbitmq_url: str = "amqp://guest:guest@localhost:5672//"
 
     @classmethod
     def from_environment(cls) -> "Settings":
@@ -52,6 +53,8 @@ class Settings(BaseModel):
             overrides["secret_key"] = os.environ["SECRET_KEY"]
         if "REDIS_URL" in os.environ:
             overrides["redis_url"] = os.environ["REDIS_URL"]
+        if "RABBITMQ_URL" in os.environ:
+            overrides["rabbitmq_url"] = os.environ["RABBITMQ_URL"]
         return cls(**overrides)
 
 
