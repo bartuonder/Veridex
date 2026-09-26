@@ -8,6 +8,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from api.db.base import Base
 
+JOB_STATUS_PENDING = "pending"
+JOB_STATUS_PROCESSING = "processing"
+JOB_STATUS_COMPLETED = "completed"
+JOB_STATUS_FAILED = "failed"
+
 
 class User(Base):
     __tablename__ = "users"
@@ -53,6 +58,12 @@ class AnalysisResult(Base):
     )
     model_version: Mapped[str] = mapped_column(String(255), nullable=False)
     threshold_used: Mapped[float] = mapped_column(Float, nullable=False)
+    job_id: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default=JOB_STATUS_PENDING, server_default=JOB_STATUS_PENDING
+    )
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    result_payload: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
