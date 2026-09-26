@@ -36,7 +36,7 @@ training:
   save_strategy: epoch
   save_total_limit: 2
   logging_steps: 50
-  metric_for_best_model: f1
+  metric_for_best_model: eval_f1
   greater_is_better: true
   gradient_checkpointing: false
   dataloader_num_workers: 2
@@ -51,7 +51,8 @@ metrics:
   span_match_f1_threshold: 0.5
 
 mlflow:
-  tracking_uri: file:./mlruns
+  tracking_uri: sqlite:///mlflow.db
+  artifact_location: mlruns
   experiment_name: veridex-qa-cuad
   registered_model_name: Veridex-QA
   staging_alias: staging

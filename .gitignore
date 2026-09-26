@@ -1,5 +1,7 @@
 mlruns/
 mlartifacts/
+mlflow.db
+mlflow.db-journal
 data/
 outputs/
 checkpoints/

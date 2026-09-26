@@ -20,6 +20,21 @@ def load_config(config_path: str | Path | None = None) -> dict[str, Any]:
     return config
 
 
+def apply_overrides(config: dict[str, Any], overrides: list[str]) -> dict[str, Any]:
+    for override in overrides:
+        if "=" not in override:
+            raise ValueError(f"Override must use dotted.key=value form, got: {override}")
+        dotted_key, raw_value = override.split("=", 1)
+        keys = dotted_key.split(".")
+        target = config
+        for key in keys[:-1]:
+            if key not in target or not isinstance(target[key], dict):
+                raise KeyError(f"Unknown config section: {dotted_key}")
+            target = target[key]
+        target[keys[-1]] = yaml.safe_load(raw_value)
+    return config
+
+
 def resolve_path(relative_or_absolute: str | Path) -> Path:
     path = Path(relative_or_absolute)
     return path if path.is_absolute() else PROJECT_ROOT / path
