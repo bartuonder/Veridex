@@ -7,6 +7,8 @@ from jwt import InvalidTokenError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from api.auth.api_keys import generate_api_key, hash_api_key
+from api.auth.deps import get_current_user
 from api.auth.passwords import hash_password, verify_password
 from api.auth.tokens import (
     REFRESH_TOKEN_TYPE,
@@ -14,10 +16,13 @@ from api.auth.tokens import (
     create_refresh_token,
     decode_token,
 )
-from api.db.models import User
+from api.db.models import ApiKey, User
 from api.db.session import get_db
 from api.schemas import (
     AccessTokenResponse,
+    ApiKeyListItem,
+    CreateApiKeyRequest,
+    CreatedApiKeyResponse,
     ErrorResponse,
     LoginRequest,
     RefreshRequest,
@@ -115,3 +120,58 @@ def refresh_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
     return AccessTokenResponse(access_token=create_access_token(user.id, settings))
+
+
+@router.post(
+    "/api-keys",
+    response_model=CreatedApiKeyResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses={status.HTTP_401_UNAUTHORIZED: {"model": ErrorResponse}},
+)
+def create_api_key(
+    request: CreateApiKeyRequest,
+    session: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> CreatedApiKeyResponse:
+    raw_key = generate_api_key()
+    record = ApiKey(user_id=user.id, key_hash=hash_api_key(raw_key), name=request.name.strip())
+    session.add(record)
+    session.flush()
+    return CreatedApiKeyResponse(
+        id=record.id,
+        name=record.name,
+        key=raw_key,
+        created_at=record.created_at,
+    )
+
+
+@router.get(
+    "/api-keys",
+    response_model=list[ApiKeyListItem],
+    responses={status.HTTP_401_UNAUTHORIZED: {"model": ErrorResponse}},
+)
+def list_api_keys(
+    session: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> list[ApiKey]:
+    return list(session.scalars(select(ApiKey).where(ApiKey.user_id == user.id).order_by(ApiKey.created_at.desc())))
+
+
+@router.delete(
+    "/api-keys/{key_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        status.HTTP_401_UNAUTHORIZED: {"model": ErrorResponse},
+        status.HTTP_404_NOT_FOUND: {"model": ErrorResponse},
+    },
+)
+def deactivate_api_key(
+    key_id: uuid.UUID,
+    session: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> None:
+    record = session.scalar(select(ApiKey).where(ApiKey.id == key_id, ApiKey.user_id == user.id))
+    if record is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="API key not found")
+    record.is_active = False
+    session.flush()

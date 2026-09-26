@@ -149,3 +149,22 @@ class AnalyzeJobStatus(BaseModel):
     cached: bool = False
     result: AnalyzeResponse | None = None
     error: str | None = None
+
+
+class CreateApiKeyRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+
+
+class CreatedApiKeyResponse(BaseModel):
+    id: UUID
+    name: str
+    key: str
+    created_at: datetime
+
+
+class ApiKeyListItem(BaseModel):
+    id: UUID
+    name: str
+    created_at: datetime
+    last_used_at: datetime | None = None
+    is_active: bool
