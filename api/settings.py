@@ -32,6 +32,10 @@ class Settings(BaseModel):
     inference_batch_size: int = Field(default=16, gt=0)
     inference_device: Literal["auto", "cuda", "cpu"] = "auto"
     database_url: str = "postgresql+psycopg://veridex:veridex@localhost:5432/veridex"
+    secret_key: str = Field(default="dev-only-change-this-secret-key-32", min_length=32)
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = Field(default=30, gt=0)
+    refresh_token_expire_days: int = Field(default=7, gt=0)
 
     @classmethod
     def from_environment(cls) -> "Settings":
@@ -42,6 +46,8 @@ class Settings(BaseModel):
         }
         if "DATABASE_URL" in os.environ:
             overrides["database_url"] = os.environ["DATABASE_URL"]
+        if "SECRET_KEY" in os.environ:
+            overrides["secret_key"] = os.environ["SECRET_KEY"]
         return cls(**overrides)
 
 
