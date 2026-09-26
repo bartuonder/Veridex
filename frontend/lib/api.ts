@@ -261,3 +261,15 @@ export type AnalyzeJobStatus = {
 export async function fetchAnalyzeJob(jobId: string): Promise<AnalyzeJobStatus> {
   return apiFetch<AnalyzeJobStatus>(`/analyze/${encodeURIComponent(jobId)}`, { auth: true });
 }
+
+export type ApiKeyListItem = {
+  id: string;
+  name: string;
+  created_at: string;
+  last_used_at: string | null;
+  is_active: boolean;
+};
+
+export async function listApiKeys(): Promise<ApiKeyListItem[]> {
+  return apiFetch<ApiKeyListItem[]>("/auth/api-keys", { auth: true });
+}
