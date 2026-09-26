@@ -27,7 +27,7 @@ export class ApiError extends Error {
 }
 
 export function getApiUrl(): string {
-  return process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+  return "/api";
 }
 
 function browserStorage(): Storage | null {
@@ -199,7 +199,13 @@ function wait(ms: number): Promise<void> {
 }
 
 export async function registerAndLogin(email: string, password: string): Promise<TokenPair> {
-  await register(email, password);
+  try {
+    await register(email, password);
+  } catch (caught) {
+    if (!(caught instanceof ApiError) || caught.status !== 409) {
+      throw caught;
+    }
+  }
   let lastError: unknown = null;
   for (let attempt = 0; attempt < 5; attempt += 1) {
     try {

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { addAnalysisJob, loadAnalysisJobs, StoredAnalysisJob } from "@/lib/analysis-history";
 import { ApiError, logout, submitAnalyze } from "@/lib/api";
@@ -25,8 +25,10 @@ export default function DashboardPage() {
     router.replace("/login");
   }
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onSubmit() {
+    if (pending) {
+      return;
+    }
     setError("");
     setJobId("");
     setPending(true);
@@ -71,19 +73,13 @@ export default function DashboardPage() {
       </div>
       <h1 className="mt-8 text-3xl font-semibold tracking-tight text-zinc-900">Dashboard</h1>
       <p className="mt-3 text-zinc-600">Paste a contract and send it for analysis.</p>
-      <form
-        className="mt-8 space-y-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm"
-        method="post"
-        action=""
-        onSubmit={onSubmit}
-      >
+      <div className="mt-8 space-y-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
         <label className="block">
           <span className="text-sm font-medium text-zinc-700">Document name</span>
           <input
             className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900 outline-none ring-zinc-900 focus:ring-2"
             type="text"
             name="document_name"
-            required
             maxLength={255}
             value={documentName}
             onChange={(event) => setDocumentName(event.target.value)}
@@ -94,7 +90,6 @@ export default function DashboardPage() {
           <textarea
             className="mt-1 min-h-48 w-full rounded-lg border border-zinc-300 px-3 py-2 font-mono text-sm text-zinc-900 outline-none ring-zinc-900 focus:ring-2"
             name="document_text"
-            required
             value={documentText}
             onChange={(event) => setDocumentText(event.target.value)}
           />
@@ -109,12 +104,13 @@ export default function DashboardPage() {
         ) : null}
         <button
           className="rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-60"
-          type="submit"
+          type="button"
           disabled={pending}
+          onClick={() => void onSubmit()}
         >
           {pending ? "Sending..." : "Analyze contract"}
         </button>
-      </form>
+      </div>
       <section className="mt-10">
         <h2 className="text-lg font-semibold tracking-tight text-zinc-900">Geçmiş Analizler</h2>
         {jobs.length === 0 ? (

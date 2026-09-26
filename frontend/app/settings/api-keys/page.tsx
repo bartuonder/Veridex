@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
+import { KeyboardEvent, useEffect, useState } from "react";
 
 import { ApiError, ApiKeyListItem, CreatedApiKey, createApiKey, deleteApiKey, listApiKeys, logout } from "@/lib/api";
 
@@ -58,8 +58,10 @@ export default function ApiKeysPage() {
     };
   }, [router]);
 
-  async function onCreate(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onCreate() {
+    if (creating) {
+      return;
+    }
     setError("");
     setCopied(false);
     setCreating(true);
@@ -131,32 +133,33 @@ export default function ApiKeysPage() {
       </div>
       <h1 className="mt-8 text-3xl font-semibold tracking-tight text-zinc-900">API keys</h1>
       <p className="mt-3 text-zinc-600">Keys are shown by name and date. The raw secret is never listed.</p>
-      <form
-        className="mt-8 space-y-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm"
-        method="post"
-        action=""
-        onSubmit={onCreate}
-      >
+      <div className="mt-8 space-y-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
         <label className="block">
           <span className="text-sm font-medium text-zinc-700">Key name</span>
           <input
             className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900 outline-none ring-zinc-900 focus:ring-2"
             type="text"
             name="name"
-            required
             maxLength={100}
             value={name}
             onChange={(event) => setName(event.target.value)}
+            onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                void onCreate();
+              }
+            }}
           />
         </label>
         <button
           className="rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-60"
-          type="submit"
+          type="button"
           disabled={creating}
+          onClick={() => void onCreate()}
         >
           {creating ? "Creating..." : "Yeni key oluştur"}
         </button>
-      </form>
+      </div>
       {created ? (
         <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
           <p className="text-sm font-medium text-amber-900">
