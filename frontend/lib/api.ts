@@ -195,3 +195,24 @@ export async function register(email: string, password: string): Promise<Registe
 export async function logout(): Promise<void> {
   clearTokens();
 }
+
+export type AnalyzeJobAccepted = {
+  job_id: string;
+  status: "pending" | "processing" | "completed" | "failed";
+  cached: boolean;
+};
+
+export async function submitAnalyze(
+  documentName: string,
+  documentText: string,
+): Promise<AnalyzeJobAccepted> {
+  return apiFetch<AnalyzeJobAccepted>("/analyze", {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify({
+      document_name: documentName,
+      document_text: documentText,
+      contract_type: "other",
+    }),
+  });
+}

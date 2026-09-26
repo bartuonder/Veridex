@@ -1,15 +1,41 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { FormEvent, useState } from "react";
 
-import { logout } from "@/lib/api";
+import { ApiError, logout, submitAnalyze } from "@/lib/api";
 
 export default function DashboardPage() {
   const router = useRouter();
+  const [documentName, setDocumentName] = useState("pasted-contract.txt");
+  const [documentText, setDocumentText] = useState("");
+  const [error, setError] = useState("");
+  const [jobId, setJobId] = useState("");
+  const [pending, setPending] = useState(false);
 
   function onLogout() {
     logout();
     router.replace("/login");
+  }
+
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setJobId("");
+    setPending(true);
+    try {
+      const accepted = await submitAnalyze(documentName.trim(), documentText);
+      setJobId(accepted.job_id);
+    } catch (caught) {
+      if (caught instanceof ApiError && caught.status === 401) {
+        logout();
+        router.replace("/login");
+        return;
+      }
+      setError(caught instanceof ApiError ? caught.detail : "Analyze request failed");
+    } finally {
+      setPending(false);
+    }
   }
 
   return (
@@ -25,7 +51,49 @@ export default function DashboardPage() {
         </button>
       </div>
       <h1 className="mt-8 text-3xl font-semibold tracking-tight text-zinc-900">Dashboard</h1>
-      <p className="mt-3 text-zinc-600">You are signed in. Contract analysis will live here next.</p>
+      <p className="mt-3 text-zinc-600">Paste a contract and send it for analysis.</p>
+      <form
+        className="mt-8 space-y-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm"
+        onSubmit={onSubmit}
+      >
+        <label className="block">
+          <span className="text-sm font-medium text-zinc-700">Document name</span>
+          <input
+            className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900 outline-none ring-zinc-900 focus:ring-2"
+            type="text"
+            name="document_name"
+            required
+            maxLength={255}
+            value={documentName}
+            onChange={(event) => setDocumentName(event.target.value)}
+          />
+        </label>
+        <label className="block">
+          <span className="text-sm font-medium text-zinc-700">Contract text</span>
+          <textarea
+            className="mt-1 min-h-48 w-full rounded-lg border border-zinc-300 px-3 py-2 font-mono text-sm text-zinc-900 outline-none ring-zinc-900 focus:ring-2"
+            name="document_text"
+            required
+            value={documentText}
+            onChange={(event) => setDocumentText(event.target.value)}
+          />
+        </label>
+        {error ? (
+          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+        ) : null}
+        {jobId ? (
+          <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+            Job queued: {jobId}
+          </p>
+        ) : null}
+        <button
+          className="rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-60"
+          type="submit"
+          disabled={pending}
+        >
+          {pending ? "Sending..." : "Analyze contract"}
+        </button>
+      </form>
     </main>
   );
 }
