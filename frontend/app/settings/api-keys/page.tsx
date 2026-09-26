@@ -2,9 +2,10 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { CREATED_KEY_COOKIE } from "@/lib/auth-cookies";
 import { backendFetch } from "@/lib/backend";
 
-import { CREATED_KEY_COOKIE, createApiKeyAction, deleteApiKeyAction, dismissCreatedKeyAction } from "./actions";
+import { createApiKeyAction, deleteApiKeyAction, dismissCreatedKeyAction } from "./actions";
 
 type ApiKeyItem = {
   id: string;

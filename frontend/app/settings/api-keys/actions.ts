@@ -3,9 +3,8 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { CREATED_KEY_COOKIE } from "@/lib/auth-cookies";
 import { backendFetch } from "@/lib/backend";
-
-export const CREATED_KEY_COOKIE = "veridex_created_api_key";
 
 export async function createApiKeyAction(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
