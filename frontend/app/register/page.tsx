@@ -33,7 +33,7 @@ export default function RegisterPage() {
         <p className="text-sm font-medium uppercase tracking-[0.2em] text-zinc-500">Veridex</p>
         <h1 className="mt-3 text-2xl font-semibold tracking-tight text-zinc-900">Create account</h1>
         <p className="mt-2 text-sm text-zinc-600">Password must be at least 8 characters.</p>
-        <form className="mt-8 space-y-4" onSubmit={onSubmit}>
+        <form className="mt-8 space-y-4" method="post" action="" onSubmit={onSubmit}>
           <label className="block">
             <span className="text-sm font-medium text-zinc-700">Email</span>
             <input

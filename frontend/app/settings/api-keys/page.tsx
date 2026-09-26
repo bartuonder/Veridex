@@ -133,6 +133,8 @@ export default function ApiKeysPage() {
       <p className="mt-3 text-zinc-600">Keys are shown by name and date. The raw secret is never listed.</p>
       <form
         className="mt-8 space-y-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm"
+        method="post"
+        action=""
         onSubmit={onCreate}
       >
         <label className="block">

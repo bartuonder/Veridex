@@ -73,6 +73,8 @@ export default function DashboardPage() {
       <p className="mt-3 text-zinc-600">Paste a contract and send it for analysis.</p>
       <form
         className="mt-8 space-y-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm"
+        method="post"
+        action=""
         onSubmit={onSubmit}
       >
         <label className="block">

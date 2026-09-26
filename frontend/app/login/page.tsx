@@ -33,7 +33,7 @@ export default function LoginPage() {
         <p className="text-sm font-medium uppercase tracking-[0.2em] text-zinc-500">Veridex</p>
         <h1 className="mt-3 text-2xl font-semibold tracking-tight text-zinc-900">Sign in</h1>
         <p className="mt-2 text-sm text-zinc-600">Use your account email and password.</p>
-        <form className="mt-8 space-y-4" onSubmit={onSubmit}>
+        <form className="mt-8 space-y-4" method="post" action="" onSubmit={onSubmit}>
           <label className="block">
             <span className="text-sm font-medium text-zinc-700">Email</span>
             <input
