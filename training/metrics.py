@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import re
 import string
 from collections import Counter
@@ -75,7 +76,7 @@ def compute_recall_at_high_precision(
 ) -> dict[str, float]:
     scored = [
         (
-            prediction.score_diff,
+            prediction.score_diff if math.isfinite(prediction.score_diff) else math.inf,
             prediction.is_answerable
             and best_score_against_golds(prediction.best_span_text, prediction.gold_texts, compute_token_f1)
             >= span_match_f1_threshold,
@@ -93,7 +94,7 @@ def compute_recall_at_high_precision(
     scored.sort(key=lambda item: item[0])
 
     best_recall = 0.0
-    best_threshold = float(scored[0][0]) if scored else 0.0
+    best_threshold = 0.0
     best_precision = 0.0
     true_positives = 0
 
