@@ -1,10 +1,17 @@
-"use client";
-
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { KeyboardEvent, useEffect, useState } from "react";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
-import { ApiError, ApiKeyListItem, CreatedApiKey, createApiKey, deleteApiKey, listApiKeys, logout } from "@/lib/api";
+import { backendFetch } from "@/lib/backend";
+
+import { CREATED_KEY_COOKIE, createApiKeyAction, deleteApiKeyAction, dismissCreatedKeyAction } from "./actions";
+
+type ApiKeyItem = {
+  id: string;
+  name: string;
+  created_at: string;
+  is_active: boolean;
+};
 
 function formatTimestamp(value: string): string {
   const date = new Date(value);
@@ -14,114 +21,19 @@ function formatTimestamp(value: string): string {
   return date.toISOString().replace("T", " ").slice(0, 19);
 }
 
-export default function ApiKeysPage() {
-  const router = useRouter();
-  const [keys, setKeys] = useState<ApiKeyListItem[]>([]);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [name, setName] = useState("");
-  const [creating, setCreating] = useState(false);
-  const [created, setCreated] = useState<CreatedApiKey | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [deletingId, setDeletingId] = useState("");
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      try {
-        const items = await listApiKeys();
-        if (!cancelled) {
-          setKeys(items);
-          setError("");
-        }
-      } catch (caught) {
-        if (cancelled) {
-          return;
-        }
-        if (caught instanceof ApiError && caught.status === 401) {
-          logout();
-          router.replace("/login");
-          return;
-        }
-        setError(caught instanceof ApiError ? caught.detail : "Failed to load API keys");
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    }
-
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [router]);
-
-  async function onCreate() {
-    if (creating) {
-      return;
-    }
-    setError("");
-    setCopied(false);
-    setCreating(true);
-    try {
-      const next = await createApiKey(name.trim());
-      setCreated(next);
-      setName("");
-      setKeys((current) => [
-        {
-          id: next.id,
-          name: next.name,
-          created_at: next.created_at,
-          last_used_at: null,
-          is_active: true,
-        },
-        ...current.filter((item) => item.id !== next.id),
-      ]);
-    } catch (caught) {
-      if (caught instanceof ApiError && caught.status === 401) {
-        logout();
-        router.replace("/login");
-        return;
-      }
-      setError(caught instanceof ApiError ? caught.detail : "Failed to create API key");
-    } finally {
-      setCreating(false);
-    }
+export default async function ApiKeysPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
+  const listResponse = await backendFetch("/auth/api-keys");
+  if (listResponse.status === 401) {
+    redirect("/login");
   }
-
-  async function onDelete(keyId: string) {
-    setError("");
-    setDeletingId(keyId);
-    try {
-      await deleteApiKey(keyId);
-      setKeys((current) =>
-        current.map((item) => (item.id === keyId ? { ...item, is_active: false } : item)),
-      );
-      if (created?.id === keyId) {
-        setCreated(null);
-        setCopied(false);
-      }
-    } catch (caught) {
-      if (caught instanceof ApiError && caught.status === 401) {
-        logout();
-        router.replace("/login");
-        return;
-      }
-      setError(caught instanceof ApiError ? caught.detail : "Failed to delete API key");
-    } finally {
-      setDeletingId("");
-    }
-  }
-
-  async function onCopy() {
-    if (created === null) {
-      return;
-    }
-    await navigator.clipboard.writeText(created.key);
-    setCopied(true);
-  }
+  const keys = (listResponse.ok ? ((await listResponse.json()) as ApiKeyItem[]) : []);
+  const jar = await cookies();
+  const createdKey = jar.get(CREATED_KEY_COOKIE)?.value ?? "";
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col px-6 py-16">
@@ -133,7 +45,7 @@ export default function ApiKeysPage() {
       </div>
       <h1 className="mt-8 text-3xl font-semibold tracking-tight text-zinc-900">API keys</h1>
       <p className="mt-3 text-zinc-600">Keys are shown by name and date. The raw secret is never listed.</p>
-      <div className="mt-8 space-y-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+      <form className="mt-8 space-y-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm" action={createApiKeyAction}>
         <label className="block">
           <span className="text-sm font-medium text-zinc-700">Key name</span>
           <input
@@ -141,46 +53,43 @@ export default function ApiKeysPage() {
             type="text"
             name="name"
             maxLength={100}
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                void onCreate();
-              }
-            }}
+            required
           />
         </label>
-        <button
-          className="rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-60"
-          type="button"
-          disabled={creating}
-          onClick={() => void onCreate()}
-        >
-          {creating ? "Creating..." : "Yeni key oluştur"}
+        <button className="rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white" type="submit">
+          Yeni key oluştur
         </button>
-      </div>
-      {created ? (
+      </form>
+      {createdKey ? (
         <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
           <p className="text-sm font-medium text-amber-900">
             Bu anahtarı şimdi kopyala, bir daha gösterilmeyecek.
           </p>
-          <p className="mt-3 break-all font-mono text-sm text-zinc-900">{created.key}</p>
-          <button
-            className="mt-4 rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900"
-            type="button"
-            onClick={onCopy}
-          >
-            {copied ? "Copied" : "Copy"}
-          </button>
+          <input
+            className="mt-3 w-full rounded-lg border border-amber-200 bg-white px-3 py-2 font-mono text-sm text-zinc-900"
+            readOnly
+            value={createdKey}
+          />
+          <form className="mt-4" action={dismissCreatedKeyAction}>
+            <button
+              className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900"
+              type="submit"
+            >
+              Gizle
+            </button>
+          </form>
         </div>
       ) : null}
-      {error ? (
-        <p className="mt-6 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+      {error === "name" ? (
+        <p className="mt-6 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">Enter a key name.</p>
       ) : null}
-      {loading ? (
-        <p className="mt-6 text-sm text-zinc-500">Loading...</p>
-      ) : keys.length === 0 ? (
+      {error === "create" ? (
+        <p className="mt-6 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">Could not create the API key.</p>
+      ) : null}
+      {!listResponse.ok && error !== "create" && error !== "name" ? (
+        <p className="mt-6 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">Could not load API keys.</p>
+      ) : null}
+      {keys.length === 0 ? (
         <p className="mt-6 text-sm text-zinc-500">No API keys yet.</p>
       ) : (
         <ul className="mt-8 divide-y divide-zinc-200 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
@@ -192,14 +101,15 @@ export default function ApiKeysPage() {
                 <p className="mt-1 text-xs text-zinc-500">{item.is_active ? "Active" : "Inactive"}</p>
               </div>
               {item.is_active ? (
-                <button
-                  className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm text-zinc-700 disabled:opacity-60"
-                  type="button"
-                  disabled={deletingId === item.id}
-                  onClick={() => void onDelete(item.id)}
-                >
-                  {deletingId === item.id ? "Siliniyor..." : "Sil"}
-                </button>
+                <form action={deleteApiKeyAction}>
+                  <input type="hidden" name="key_id" value={item.id} />
+                  <button
+                    className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm text-zinc-700"
+                    type="submit"
+                  >
+                    Sil
+                  </button>
+                </form>
               ) : null}
             </li>
           ))}
