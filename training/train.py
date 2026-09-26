@@ -27,6 +27,7 @@ from training.config import (
 from training.data import build_eval_features, build_train_features, load_cuad_splits
 from training.metrics import collect_error_samples, compute_all_metrics
 from training.postprocess import postprocess_qa_predictions
+from training.registry import register_best_model
 
 POSTPROCESSING_ONLY_COLUMNS = ["example_id", "offset_mapping"]
 MASTER_WEIGHT_DTYPE = torch.float32
@@ -223,6 +224,15 @@ def main() -> None:
         with open(metrics_path, "w", encoding="utf-8") as handle:
             json.dump(final_metrics, handle, indent=2)
         mlflow.log_artifact(str(metrics_path), artifact_path="metrics")
+
+        registered_version = register_best_model(best_model_directory, final_metrics, config["mlflow"])
+        if registered_version is None:
+            print("Existing staging model has a higher eval_f1, alias left unchanged")
+        else:
+            print(
+                f"Registered {config['mlflow']['registered_model_name']} version {registered_version} "
+                f"with alias {config['mlflow']['staging_alias']}"
+            )
 
         print(json.dumps(final_metrics, indent=2))
 
