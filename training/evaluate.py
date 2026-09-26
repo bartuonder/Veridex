@@ -17,7 +17,7 @@ from transformers import AutoModelForQuestionAnswering, AutoTokenizer, default_d
 from training.config import apply_overrides, load_config, resolve_path, set_global_seed
 from training.data import build_eval_features, load_cuad_splits
 from training.metrics import collect_error_samples, compute_all_metrics, compute_squad_metrics
-from training.postprocess import SpanPrediction, postprocess_qa_predictions
+from training.postprocess import SpanPrediction, apply_null_threshold, postprocess_qa_predictions
 from training.registry import MODEL_ARTIFACT_KEY
 from training.tracking import configure_mlflow
 
@@ -73,6 +73,62 @@ def run_inference(
     return np.concatenate(start_logits, axis=0), np.concatenate(end_logits, axis=0)
 
 
+def load_or_compute_logits(
+    model,
+    features,
+    batch_size: int,
+    device: torch.device,
+    cache_path: Path,
+    model_directory: Path,
+    refresh: bool,
+) -> tuple[np.ndarray, np.ndarray]:
+    expected_signature = f"{model_directory}|{len(features)}"
+    if cache_path.exists() and not refresh:
+        cached = np.load(cache_path, allow_pickle=False)
+        if str(cached["signature"]) == expected_signature:
+            print(f"reusing cached logits from {cache_path}")
+            return cached["start_logits"], cached["end_logits"]
+        print("cached logits do not match this model or feature count, recomputing")
+
+    start_logits, end_logits = run_inference(model, features, batch_size, device)
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(
+        cache_path,
+        start_logits=start_logits,
+        end_logits=end_logits,
+        signature=np.array(expected_signature),
+    )
+    return start_logits, end_logits
+
+
+def sweep_null_thresholds(
+    predictions: list[SpanPrediction],
+    thresholds: list[float],
+    metrics_config: dict[str, Any],
+) -> list[dict[str, Any]]:
+    sweep_results: list[dict[str, Any]] = []
+    for threshold in thresholds:
+        apply_null_threshold(predictions, threshold)
+        metrics = compute_all_metrics(predictions, metrics_config)
+        sweep_results.append({"null_score_diff_threshold": threshold, **metrics})
+    return sweep_results
+
+
+def format_sweep_table(sweep_results: list[dict[str, Any]]) -> str:
+    header = f"{'threshold':>10}{'f1':>9}{'exact':>9}{'has_ans_f1':>12}{'no_ans_acc':>12}{'recall@80p':>12}"
+    lines = [header, "-" * len(header)]
+    for row in sweep_results:
+        lines.append(
+            f"{row['null_score_diff_threshold']:>10.2f}"
+            f"{row['f1']:>9.2f}"
+            f"{row['exact_match']:>9.2f}"
+            f"{row['has_answer_f1']:>12.2f}"
+            f"{row['no_answer_accuracy']:>12.2f}"
+            f"{row['recall_at_high_precision']:>12.2f}"
+        )
+    return "\n".join(lines)
+
+
 def compute_category_breakdown(predictions: list[SpanPrediction]) -> list[dict[str, Any]]:
     grouped: dict[str, list[SpanPrediction]] = defaultdict(list)
     for prediction in predictions:
@@ -113,6 +169,8 @@ def main() -> None:
     parser.add_argument("--split", default="test", choices=["validation", "test"])
     parser.add_argument("--report-dir", default=None)
     parser.add_argument("--no-mlflow", action="store_true")
+    parser.add_argument("--sweep-null-thresholds", nargs="*", type=float, default=None)
+    parser.add_argument("--refresh-logits", action="store_true")
     parser.add_argument("--override", nargs="*", default=[])
     arguments = parser.parse_args()
 
@@ -134,33 +192,58 @@ def main() -> None:
     examples = splits[arguments.split]
     features = build_eval_features(examples, tokenizer, config["model"], config["preprocessing"])
 
-    start_logits, end_logits = run_inference(
-        model, features, config["training"]["per_device_eval_batch_size"], device
+    report_directory = resolve_path(arguments.report_dir or Path(config["training"]["output_dir"]) / "reports")
+    report_directory.mkdir(parents=True, exist_ok=True)
+
+    start_logits, end_logits = load_or_compute_logits(
+        model,
+        features,
+        config["training"]["per_device_eval_batch_size"],
+        device,
+        report_directory / f"{arguments.split}_logits.npz",
+        model_directory,
+        arguments.refresh_logits,
     )
     predictions = postprocess_qa_predictions(
         examples, features, start_logits, end_logits, config["postprocessing"]
     )
+
+    configured_threshold = config["postprocessing"]["null_score_diff_threshold"]
+    sweep_results = sweep_null_thresholds(
+        predictions,
+        arguments.sweep_null_thresholds or [configured_threshold],
+        config["metrics"],
+    )
+    best_sweep_row = max(sweep_results, key=lambda row: row["f1"])
+    selected_threshold = best_sweep_row["null_score_diff_threshold"]
+
+    apply_null_threshold(predictions, selected_threshold)
     metrics = compute_all_metrics(predictions, config["metrics"])
     category_rows = compute_category_breakdown(predictions)
     error_samples = collect_error_samples(predictions, config["mlflow"]["max_error_samples"])
-
-    report_directory = resolve_path(arguments.report_dir or Path(config["training"]["output_dir"]) / "reports")
-    report_directory.mkdir(parents=True, exist_ok=True)
     metrics_file = report_directory / f"{arguments.split}_metrics.json"
     categories_file = report_directory / f"{arguments.split}_clause_categories.json"
     errors_file = report_directory / f"{arguments.split}_error_samples.json"
+    sweep_file = report_directory / f"{arguments.split}_threshold_sweep.json"
 
     for path, payload in (
         (metrics_file, metrics),
         (categories_file, category_rows),
         (errors_file, error_samples),
+        (sweep_file, sweep_results),
     ):
         with open(path, "w", encoding="utf-8") as handle:
             json.dump(payload, handle, indent=2, ensure_ascii=False)
 
     print(f"\nVeridex evaluation on CUAD {arguments.split} split")
     print(f"model: {model_directory}")
-    print(f"questions: {len(examples)} | windows: {len(features)}\n")
+    print(f"questions: {len(examples)} | windows: {len(features)}")
+
+    if len(sweep_results) > 1:
+        print("\nnull_score_diff_threshold sweep")
+        print(format_sweep_table(sweep_results))
+        print(f"\nbest threshold by f1: {selected_threshold}")
+    print(f"\nreported metrics use null_score_diff_threshold={selected_threshold}\n")
     for metric_name in (
         "exact_match",
         "f1",
@@ -186,11 +269,13 @@ def main() -> None:
                     "questions": len(examples),
                     "windows": len(features),
                     "registry_reference": arguments.registry_reference or "",
+                    "null_score_diff_threshold": selected_threshold,
                 }
             )
             mlflow.log_metrics({f"{arguments.split}_{key}": value for key, value in metrics.items()})
             mlflow.log_artifact(str(metrics_file), artifact_path="evaluation")
             mlflow.log_artifact(str(categories_file), artifact_path="evaluation")
+            mlflow.log_artifact(str(sweep_file), artifact_path="evaluation")
             mlflow.log_artifact(str(errors_file), artifact_path="error_analysis")
 
 

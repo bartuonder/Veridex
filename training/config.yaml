@@ -44,7 +44,7 @@ training:
 postprocessing:
   n_best_size: 20
   max_answer_length: 256
-  null_score_diff_threshold: 0.0
+  null_score_diff_threshold: -5.0
 
 metrics:
   high_precision_target: 0.8

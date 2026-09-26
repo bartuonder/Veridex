@@ -26,6 +26,17 @@ class SpanPrediction:
         return len(self.gold_texts) > 0
 
 
+def apply_null_threshold(
+    predictions: list[SpanPrediction],
+    null_score_diff_threshold: float,
+) -> list[SpanPrediction]:
+    for prediction in predictions:
+        prediction.predicted_text = (
+            "" if prediction.score_diff > null_score_diff_threshold else prediction.best_span_text
+        )
+    return predictions
+
+
 def postprocess_qa_predictions(
     examples,
     features,
