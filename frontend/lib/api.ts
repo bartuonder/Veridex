@@ -288,3 +288,10 @@ export async function createApiKey(name: string): Promise<CreatedApiKey> {
     body: JSON.stringify({ name }),
   });
 }
+
+export async function deleteApiKey(keyId: string): Promise<void> {
+  await apiFetch<void>(`/auth/api-keys/${encodeURIComponent(keyId)}`, {
+    method: "DELETE",
+    auth: true,
+  });
+}

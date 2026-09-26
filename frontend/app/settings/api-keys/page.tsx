@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 
-import { ApiError, ApiKeyListItem, CreatedApiKey, createApiKey, listApiKeys, logout } from "@/lib/api";
+import { ApiError, ApiKeyListItem, CreatedApiKey, createApiKey, deleteApiKey, listApiKeys, logout } from "@/lib/api";
 
 function formatTimestamp(value: string): string {
   const date = new Date(value);
@@ -23,6 +23,7 @@ export default function ApiKeysPage() {
   const [creating, setCreating] = useState(false);
   const [created, setCreated] = useState<CreatedApiKey | null>(null);
   const [copied, setCopied] = useState(false);
+  const [deletingId, setDeletingId] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -85,6 +86,30 @@ export default function ApiKeysPage() {
       setError(caught instanceof ApiError ? caught.detail : "Failed to create API key");
     } finally {
       setCreating(false);
+    }
+  }
+
+  async function onDelete(keyId: string) {
+    setError("");
+    setDeletingId(keyId);
+    try {
+      await deleteApiKey(keyId);
+      setKeys((current) =>
+        current.map((item) => (item.id === keyId ? { ...item, is_active: false } : item)),
+      );
+      if (created?.id === keyId) {
+        setCreated(null);
+        setCopied(false);
+      }
+    } catch (caught) {
+      if (caught instanceof ApiError && caught.status === 401) {
+        logout();
+        router.replace("/login");
+        return;
+      }
+      setError(caught instanceof ApiError ? caught.detail : "Failed to delete API key");
+    } finally {
+      setDeletingId("");
     }
   }
 
@@ -155,10 +180,22 @@ export default function ApiKeysPage() {
       ) : (
         <ul className="mt-8 divide-y divide-zinc-200 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
           {keys.map((item) => (
-            <li key={item.id} className="px-5 py-4">
-              <p className="font-medium text-zinc-900">{item.name}</p>
-              <p className="mt-1 text-xs text-zinc-500">{formatTimestamp(item.created_at)}</p>
-              <p className="mt-1 text-xs text-zinc-500">{item.is_active ? "Active" : "Inactive"}</p>
+            <li key={item.id} className="flex items-start justify-between gap-4 px-5 py-4">
+              <div>
+                <p className="font-medium text-zinc-900">{item.name}</p>
+                <p className="mt-1 text-xs text-zinc-500">{formatTimestamp(item.created_at)}</p>
+                <p className="mt-1 text-xs text-zinc-500">{item.is_active ? "Active" : "Inactive"}</p>
+              </div>
+              {item.is_active ? (
+                <button
+                  className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm text-zinc-700 disabled:opacity-60"
+                  type="button"
+                  disabled={deletingId === item.id}
+                  onClick={() => void onDelete(item.id)}
+                >
+                  {deletingId === item.id ? "Siliniyor..." : "Sil"}
+                </button>
+              ) : null}
             </li>
           ))}
         </ul>
