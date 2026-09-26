@@ -70,6 +70,7 @@ class AnalyzeResponse(BaseModel):
     chunk_count: int = Field(ge=0)
     model_source: str
     is_mock_response: bool
+    cached: bool = False
     findings: list[ClauseFinding]
     risk_summary: RiskSummary
     categories_without_findings: list[str]
