@@ -50,7 +50,8 @@ def register_user(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
     user = User(email=request.email, hashed_password=hash_password(request.password))
     session.add(user)
-    session.flush()
+    session.commit()
+    session.refresh(user)
     return user
 
 
@@ -136,7 +137,8 @@ def create_api_key(
     raw_key = generate_api_key()
     record = ApiKey(user_id=user.id, key_hash=hash_api_key(raw_key), name=request.name.strip())
     session.add(record)
-    session.flush()
+    session.commit()
+    session.refresh(record)
     return CreatedApiKeyResponse(
         id=record.id,
         name=record.name,
@@ -174,4 +176,4 @@ def deactivate_api_key(
     if record is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="API key not found")
     record.is_active = False
-    session.flush()
+    session.commit()
