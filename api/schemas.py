@@ -135,3 +135,17 @@ class RefreshRequest(BaseModel):
 class AccessTokenResponse(BaseModel):
     access_token: str
     token_type: Literal["bearer"] = "bearer"
+
+
+class AnalyzeJobAccepted(BaseModel):
+    job_id: str
+    status: Literal["pending", "processing", "completed", "failed"]
+    cached: bool = False
+
+
+class AnalyzeJobStatus(BaseModel):
+    job_id: str
+    status: Literal["pending", "processing", "completed", "failed"]
+    cached: bool = False
+    result: AnalyzeResponse | None = None
+    error: str | None = None

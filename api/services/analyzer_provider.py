@@ -54,3 +54,7 @@ def get_analyzer_state(settings: Settings) -> AnalyzerState:
     if _state is None:
         return initialise_analyzer(settings)
     return _state
+
+
+def peek_analyzer_state() -> AnalyzerState | None:
+    return _state
