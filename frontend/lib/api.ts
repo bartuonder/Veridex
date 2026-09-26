@@ -192,6 +192,29 @@ export async function register(email: string, password: string): Promise<Registe
   });
 }
 
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+export async function registerAndLogin(email: string, password: string): Promise<TokenPair> {
+  await register(email, password);
+  let lastError: unknown = null;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      return await login(email, password);
+    } catch (caught) {
+      lastError = caught;
+      if (!(caught instanceof ApiError) || caught.status !== 401) {
+        throw caught;
+      }
+      await wait(250 * (attempt + 1));
+    }
+  }
+  throw lastError instanceof Error ? lastError : new ApiError(401, "Invalid email or password");
+}
+
 export async function logout(): Promise<void> {
   clearTokens();
 }
